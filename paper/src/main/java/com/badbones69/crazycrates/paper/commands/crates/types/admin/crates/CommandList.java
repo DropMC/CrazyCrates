@@ -33,7 +33,9 @@ public class CommandList extends BaseCommand {
 
             final CrateType type = crate.getCrateType();
 
-            crates.add(Message.crate_list_per_crate.getMessage(sender, Map.of(
+            // The reset closes this line's tags: left open they nest across lines, and the console renderer gives up
+            // past 128 nested styles.
+            crates.add("<reset>" + Message.crate_list_per_crate.getMessage(sender, Map.of(
                     "{crate_name}", type.equals(CrateType.menu) ? "Menu" : crate.getCrateName(),
                     "{id}", crateLocation.getID(),
                     "{x}", String.valueOf(location.getBlockX()),
