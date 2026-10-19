@@ -56,6 +56,8 @@ public class MiscListener implements Listener {
 
         final Key key = world.key();
 
+        this.crateManager.loadWorldLocations(world);
+
         if (this.storageHolder.hasWorld(key)) {
             return;
         }

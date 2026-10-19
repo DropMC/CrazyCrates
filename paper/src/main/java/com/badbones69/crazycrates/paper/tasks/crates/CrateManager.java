@@ -125,6 +125,8 @@ public class CrateManager {
     private final BukkitKeyManager keyManager = this.platform.getKeyManager();
 
     private final List<CrazyLocation> brokenLocations = new ArrayList<>();
+    // broken only because their world was not loaded yet, retried by loadWorldLocations.
+    private final List<CrazyLocation> unloadedWorldLocations = new ArrayList<>();
 
     private final List<QuadCrateManager> quadSessions = new ArrayList<>();
     private final List<CrateSchematic> crateSchematics = new ArrayList<>();
@@ -663,27 +665,13 @@ public class CrateManager {
 
                 if (optional.isEmpty()) {
                     this.brokenLocations.add(location);
+                    this.unloadedWorldLocations.add(location);
 
                     continue;
                 }
 
-                final Crate crate = getCrateFromName(location.getCrateName());
-
-                if (crate == null) {
+                if (!loadLocation(location, optional.get())) {
                     this.brokenLocations.add(location);
-
-                    continue;
-                }
-
-                final Location value = new Location(optional.get(), location.getX(), location.getY(), location.getZ());
-                final String id = location.getId();
-
-                onRegion(value, () -> new ChunkCrate(value).init(id));
-
-                this.locations.put(id, new CrateLocation(id, crate, value)); // add to cache!
-
-                if (this.holograms != null && !crate.getCrateType().equals(CrateType.menu) && crate.getHologram().isEnabled()) {
-                    this.holograms.createHologram(value, crate, id);
                 }
             }
         }
@@ -846,6 +834,45 @@ public class CrateManager {
      */
     public void addLocation(@NotNull final CrateLocation crateLocation) {
         this.locations.put(crateLocation.getID(), crateLocation);
+    }
+
+    /**
+     * Loads the locations that were broken only because their world was not loaded yet. On Folia, Multiverse loads its
+     * worlds after the plugins enable, so without this every location outside the main world is lost on boot.
+     *
+     * @param world the world that just loaded
+     */
+    public void loadWorldLocations(@NotNull final World world) {
+        final Key key = world.key();
+
+        for (final CrazyLocation location : List.copyOf(this.unloadedWorldLocations)) {
+            if (!location.getWorldKey().equals(key)) continue;
+
+            this.unloadedWorldLocations.remove(location);
+
+            if (loadLocation(location, world)) {
+                this.brokenLocations.remove(location);
+            }
+        }
+    }
+
+    private boolean loadLocation(@NotNull final CrazyLocation location, @NotNull final World world) {
+        final Crate crate = getCrateFromName(location.getCrateName());
+
+        if (crate == null) return false;
+
+        final Location value = new Location(world, location.getX(), location.getY(), location.getZ());
+        final String id = location.getId();
+
+        onRegion(value, () -> new ChunkCrate(value).init(id));
+
+        this.locations.put(id, new CrateLocation(id, crate, value)); // add to cache!
+
+        if (this.holograms != null && !crate.getCrateType().equals(CrateType.menu) && crate.getHologram().isEnabled()) {
+            this.holograms.createHologram(value, crate, id);
+        }
+
+        return true;
     }
 
     /**
@@ -1285,6 +1312,8 @@ public class CrateManager {
         this.keyManager.clearNexoKeys();
         this.crates.clear();
         this.locations.clear();
+        this.brokenLocations.clear();
+        this.unloadedWorldLocations.clear();
         this.brokeCrates.clear();
         this.crateSchematics.clear();
     }
