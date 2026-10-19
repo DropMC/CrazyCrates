@@ -19,7 +19,6 @@ public final class ChunkCrate {
 
     private final NamespacedKey locationKey;
     private final Location location;
-    private final Chunk chunk;
 
     public ChunkCrate(final Location location) {
         this.locationKey = new NamespacedKey(this.plugin, this.fusion.replacePlaceholders(
@@ -32,13 +31,20 @@ public final class ChunkCrate {
         ));
 
         this.location = location;
-        this.chunk = location.getChunk();
+    }
+
+    /**
+     * Fetched on use, not in the constructor: a reload builds these on the global region thread on Folia, which may not
+     * touch a chunk, so callers run {@link #init(String)} and {@link #remove()} on the location's own region.
+     */
+    private Chunk chunk() {
+        return this.location.getChunk();
     }
 
     private String id;
 
     public ChunkCrate init(final String id) {
-        final PersistentDataContainer container = this.chunk.getPersistentDataContainer();
+        final PersistentDataContainer container = chunk().getPersistentDataContainer();
 
         container.set(this.locationKey, PersistentDataType.STRING, this.id = id); // store crate id at the location key.
 
@@ -46,7 +52,7 @@ public final class ChunkCrate {
     }
 
     public ChunkCrate remove() {
-        final PersistentDataContainer container = this.chunk.getPersistentDataContainer();
+        final PersistentDataContainer container = chunk().getPersistentDataContainer();
 
         if (container.has(this.locationKey)) {
             container.remove(this.locationKey);
@@ -56,7 +62,7 @@ public final class ChunkCrate {
     }
 
     public String get() {
-        final PersistentDataContainer container = this.chunk.getPersistentDataContainer();
+        final PersistentDataContainer container = chunk().getPersistentDataContainer();
 
         return container.getOrDefault(this.locationKey, PersistentDataType.STRING, "");
     }

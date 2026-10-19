@@ -675,9 +675,10 @@ public class CrateManager {
                     continue;
                 }
 
-                final ChunkCrate chunk = new ChunkCrate(new Location(optional.get(), location.getX(), location.getY(), location.getZ())).init(location.getId());
-                final Location value = chunk.getLocation();
-                final String id = chunk.getId();
+                final Location value = new Location(optional.get(), location.getX(), location.getY(), location.getZ());
+                final String id = location.getId();
+
+                onRegion(value, () -> new ChunkCrate(value).init(id));
 
                 this.locations.put(id, new CrateLocation(id, crate, value)); // add to cache!
 
@@ -730,7 +731,7 @@ public class CrateManager {
             this.holograms.removeHologram(id);
         }
 
-        new ChunkCrate(crateLocation.getLocation()).remove();
+        onRegion(crateLocation.getLocation(), () -> new ChunkCrate(crateLocation.getLocation()).remove());
 
         this.locations.remove(id);
 
@@ -845,6 +846,19 @@ public class CrateManager {
      */
     public void addLocation(@NotNull final CrateLocation crateLocation) {
         this.locations.put(crateLocation.getID(), crateLocation);
+    }
+
+    /**
+     * Runs the action on the thread that owns the location. Reloads and console commands run on the global region thread
+     * on Folia, which may not read or write a chunk.
+     */
+    private void onRegion(@NotNull final Location location, @NotNull final Runnable action) {
+        new FoliaScheduler(this.plugin, location) {
+            @Override
+            public void run() {
+                action.run();
+            }
+        }.runNow();
     }
 
     /**
