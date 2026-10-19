@@ -599,6 +599,8 @@ public class CrateManager {
 
             final String cleanName = fileName.replace(".yml", "");
 
+            linkNexoKey(section, cleanName);
+
             final String node = "crazycrates.open.%s".formatted(cleanName);
             final String description = "Allows you to open %s".formatted(cleanName);
 
@@ -1266,6 +1268,7 @@ public class CrateManager {
      * Nukes all data.
      */
     public void purge() {
+        this.keyManager.clearNexoKeys();
         this.crates.clear();
         this.locations.clear();
         this.brokeCrates.clear();
@@ -1563,6 +1566,27 @@ public class CrateManager {
     }
 
     // Internal methods.
+
+    /**
+     * Links the crate to its Nexo key item, when its physical key is one ({@code PhysicalKey.Item: nexo@<id>}), so any
+     * item with that Nexo id opens it. See {@link BukkitKeyManager} for why.
+     */
+    private void linkNexoKey(@NotNull final ConfigurationSection section, @NotNull final String crateName) {
+        final String item = section.getString("PhysicalKey.Item", "");
+
+        if (!item.regionMatches(true, 0, "nexo@", 0, 5)) return;
+
+        final String nexoId = item.substring(5);
+
+        if (nexoId.isBlank()) return;
+
+        final String owner = this.keyManager.linkNexoKey(nexoId, crateName);
+
+        if (owner != null) {
+            this.fusion.log(Level.WARNING, "%s uses the Nexo item %s as its key, which %s already does. Only %s accepts it.", crateName, nexoId, owner, owner);
+        }
+    }
+
     private ItemBuilder getKey(@NotNull final ConfigurationSection section, @NotNull final String crateName) {
         final ConfigurationSection index = section.getConfigurationSection("PhysicalKey");
 
