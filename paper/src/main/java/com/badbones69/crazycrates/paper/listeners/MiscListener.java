@@ -142,7 +142,13 @@ public class MiscListener implements Listener {
             final Crate crate = activeCrate.getCrate();
 
             switch (crate.getCrateType()) {
-                case war -> this.crateManager.endCrate(crate, player);
+                case war -> {
+                    this.crateManager.endCrate(crate, player);
+
+                    // The crate is still active only when no card was picked (picking removes it), and the key was
+                    // already taken on opening: closing early gives a random prize instead of eating the key.
+                    PrizeManager.givePrize(player, crate, crate.pickPrize(player));
+                }
 
                 case cosmic -> {
                     final CosmicCrateManager crateManager = (CosmicCrateManager) crate.getManager();
