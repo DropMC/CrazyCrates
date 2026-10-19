@@ -6,6 +6,7 @@ import com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migra
 import com.nexomc.nexo.api.NexoItems;
 import com.nexomc.nexo.items.ItemBuilder;
 import com.ryderbelserion.fusion.core.api.enums.Level;
+import com.ryderbelserion.fusion.files.enums.FileAction;
 import com.ryderbelserion.fusion.paper.utils.ItemUtils;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -140,7 +141,8 @@ public class PhoenixCratesMigrator extends ICrateMigrator {
         Files.createDirectories(output.getParent());
         target.save(output.toFile());
 
-        this.fileManager.addPaperFile(output);
+        // The file is already on disk; without this the file manager looks for it inside the jar and throws.
+        this.fileManager.addPaperFile(output, custom -> custom.addAction(FileAction.ALREADY_EXTRACTED));
 
         addLocations(crateName, locations);
 
