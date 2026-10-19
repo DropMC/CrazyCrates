@@ -12,6 +12,7 @@ import com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migra
 import com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migrator.types.deprecation.LegacyColorMigrator;
 import com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migrator.types.deprecation.WeightMigrator;
 import com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migrator.types.plugins.ExcellentCratesMigrator;
+import com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migrator.types.plugins.PhoenixCratesMigrator;
 import dev.triumphteam.cmd.bukkit.annotation.Permission;
 import dev.triumphteam.cmd.core.annotations.Command;
 import dev.triumphteam.cmd.core.annotations.Flag;
@@ -94,6 +95,8 @@ public class CommandMigrate extends BaseCommand {
 
                 new ExcellentCratesMigrator(sender, flags.hasFlag("d")).run();
             }
+
+            case PHOENIX_CRATES -> new PhoenixCratesMigrator(sender).run();
         }
     }
 }

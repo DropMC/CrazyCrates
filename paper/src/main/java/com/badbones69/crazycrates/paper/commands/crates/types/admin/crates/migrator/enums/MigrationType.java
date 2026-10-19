@@ -19,6 +19,8 @@ public enum MigrationType {
 
     EXCELLENT_CRATES("ExcellentCrates"),
 
+    PHOENIX_CRATES("PhoenixCrates"),
+
     PRIZE_NAME_SHUFFLER("PrizeNameShuffler"),
 
     SPECIALIZED_CRATES("SpecializedCrates");
