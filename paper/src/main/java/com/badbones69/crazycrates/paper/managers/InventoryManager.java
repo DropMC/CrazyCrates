@@ -20,13 +20,14 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import us.crazycrew.crazycrates.api.enums.types.CrateType;
+import com.ryderbelserion.fusion.paper.builders.folia.FoliaScheduler;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @SuppressWarnings("WhileLoopReplaceableByForEach")
 public class InventoryManager {
@@ -130,7 +131,11 @@ public class InventoryManager {
         crate.getPreview(player).open();
     }
 
-    private final List<UUID> previewViewers = new ArrayList<>();
+    /**
+     * Copy on write because players join and leave previews from their own region threads, and because
+     * {@link #closePreview()} closing an inventory removes its viewer from this list while the list is being walked.
+     */
+    private final List<UUID> previewViewers = new CopyOnWriteArrayList<>();
 
     public void addPreviewViewer(@NotNull final UUID uuid) {
         this.previewViewers.add(uuid);
@@ -149,11 +154,7 @@ public class InventoryManager {
     }
 
     public void openPreview(@NotNull final Crate crate) {
-        final Iterator<UUID> viewers = getPreviewViewers().iterator();
-
-        while (viewers.hasNext()) {
-            final UUID uuid = viewers.next();
-
+        for (final UUID uuid : this.previewViewers) {
             final Player player = this.server.getPlayer(uuid);
 
             if (player == null || !player.isOnline()) {
@@ -162,18 +163,14 @@ public class InventoryManager {
                 continue;
             }
 
-            openNewCratePreview(player, crate);
+            onPlayerThread(player, () -> openNewCratePreview(player, crate));
         }
     }
 
     public void closePreview() {
-        final Iterator<UUID> viewers = getPreviewViewers().iterator();
-
         final boolean isPreviewExitMessageSent = this.pluginConfig.getProperty(CrateKeys.send_preview_taken_out_message);
 
-        while (viewers.hasNext()) {
-            final UUID uuid = viewers.next();
-
+        for (final UUID uuid : this.previewViewers) {
             final Player player = this.server.getPlayer(uuid);
 
             if (player == null || !player.isOnline()) {
@@ -182,11 +179,26 @@ public class InventoryManager {
                 continue;
             }
 
-            player.closeInventory(InventoryCloseEvent.Reason.UNLOADED);
+            onPlayerThread(player, () -> {
+                player.closeInventory(InventoryCloseEvent.Reason.UNLOADED);
 
-            if (isPreviewExitMessageSent) {
-                Message.preview_force_exit.sendMessage(player);
-            }
+                if (isPreviewExitMessageSent) {
+                    Message.preview_force_exit.sendMessage(player);
+                }
+            });
         }
+    }
+
+    /**
+     * Runs the action on the thread that owns the player. A reload runs on the global region thread on Folia, and an
+     * inventory may only be opened or closed from the player's own region.
+     */
+    private void onPlayerThread(@NotNull final Player player, @NotNull final Runnable action) {
+        new FoliaScheduler(this.plugin, null, player) {
+            @Override
+            public void run() {
+                action.run();
+            }
+        }.runNow();
     }
 }
