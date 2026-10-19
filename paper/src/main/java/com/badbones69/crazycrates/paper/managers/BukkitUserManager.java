@@ -590,9 +590,9 @@ public class BukkitUserManager extends UserManager {
 
         final YamlConfiguration configuration = this.data.getConfiguration();
 
-        final ConfigurationSection section = configuration.getConfigurationSection("Players.%s".formatted(uuid));
-
-        if (section == null) return;
+        // A player who never held a virtual key has no section yet, and returning here left their openings untracked.
+        final ConfigurationSection existing = configuration.getConfigurationSection("Players.%s".formatted(uuid));
+        final ConfigurationSection section = existing != null ? existing : configuration.createSection("Players.%s".formatted(uuid));
 
         final String fileName = crate.getFileName();
 

@@ -180,6 +180,7 @@ public class PhoenixCratesMigrator extends ICrateMigrator {
         set(root, "Prize-Message", List.of());
         set(root, "Prize-Commands", List.of());
 
+        set(root, "Settings.Tracking-Crate-Opening", true);
         set(root, "Settings.Knock-Back", false);
         set(root, "Settings.Broadcast.Toggle", false);
 
