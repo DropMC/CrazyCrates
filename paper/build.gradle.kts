@@ -1,5 +1,6 @@
 plugins {
     `paper-plugin`
+    `maven-publish`
 }
 
 project.group = "${rootProject.group}.paper"
@@ -28,6 +29,7 @@ dependencies {
     implementation(libs.metrics)
 
     compileOnly(libs.bundles.holograms)
+    compileOnly(libs.bettermodel)
     compileOnly(libs.bundles.shared)
     compileOnly(libs.bundles.crates)
     compileOnly(libs.bundles.cmi)
@@ -63,4 +65,35 @@ tasks {
 
         minecraftVersion(libs.versions.minecraft.get())
     }
+}
+// DropMC: the survival modules compile against the shaded jar, the same classes the server runs, so the relocated
+// libraries match. Published to GitHub Packages by .github/workflows/dropmc-publish.yml.
+publishing {
+    repositories {
+        maven("https://maven.pkg.github.com/DropMC/CrazyCrates") {
+            name = "GitHubPackages"
+
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+
+    publications {
+        create<MavenPublication>("dropmc") {
+            groupId = "gg.dropmc.crazycrates"
+            artifactId = "crazycrates-paper"
+            version = providers.gradleProperty("dropmcVersion").getOrElse("dropmc-SNAPSHOT")
+
+            artifact(tasks.shadowJar) {
+                classifier = null
+            }
+        }
+    }
+}
+
+// jar and shadowJar both write paper.jar, so the publish waits for both to be done with it.
+tasks.withType<AbstractPublishToMaven>().configureEach {
+    dependsOn(tasks.jar, tasks.shadowJar)
 }
