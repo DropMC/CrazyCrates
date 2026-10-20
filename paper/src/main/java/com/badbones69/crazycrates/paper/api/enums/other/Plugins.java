@@ -21,6 +21,8 @@ public enum Plugins {
 
     decent_holograms("DecentHolograms"),
 
+    better_model("BetterModel"),
+
     factions_uuid("FactionsUUID"),
 
     vault("Vault"),

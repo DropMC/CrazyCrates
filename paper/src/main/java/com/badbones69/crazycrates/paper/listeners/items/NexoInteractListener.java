@@ -4,6 +4,7 @@ import com.badbones69.crazycrates.paper.CrazyCrates;
 import com.badbones69.crazycrates.paper.api.CrazyCratesPaper;
 import com.badbones69.crazycrates.paper.api.events.CrateInteractEvent;
 import com.badbones69.crazycrates.paper.tasks.crates.CrateManager;
+import com.nexomc.nexo.api.events.NexoItemsLoadedEvent;
 import com.nexomc.nexo.api.events.furniture.NexoFurnitureBreakEvent;
 import com.nexomc.nexo.api.events.furniture.NexoFurnitureInteractEvent;
 import org.bukkit.Location;
@@ -21,6 +22,16 @@ public class NexoInteractListener implements Listener {
     private final CrazyCratesPaper platform = this.plugin.getPlatform();
 
     private final CrateManager crateManager = this.platform.getCrateManager();
+
+    /**
+     * Nexo loads its items after every plugin enabled, so the keys built on enable from {@code nexo@<id>} came out as
+     * stone without the Nexo item. Rebuilding the crates once Nexo is done gives them the real item; this also follows a
+     * {@code /nexo reload}. On the global region, where the reload command runs too.
+     */
+    @EventHandler
+    public void onNexoItemsLoaded(NexoItemsLoadedEvent event) {
+        this.plugin.getServer().getGlobalRegionScheduler().execute(this.plugin, this.crateManager::loadCrates);
+    }
 
     @EventHandler
     public void onFurnitureInteractEvent(NexoFurnitureInteractEvent event) {

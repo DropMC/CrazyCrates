@@ -102,8 +102,9 @@ public class YamlFactory extends FlatFactory {
             final int x = index.node("X").getInt();
             final int y = index.node("Y").getInt();
             final int z = index.node("Z").getInt();
+            final float yaw = index.node("Yaw").getFloat(0.0f);
 
-            final CrazyLocation location = new CrazyLocation(crateId, worldKey, id, x, y, z);
+            final CrazyLocation location = new CrazyLocation(crateId, worldKey, id, x, y, z, yaw);
 
             if (!this.plugin.isCrateAvailable(crateId)) {
                 locations.get(CrateStatus.unavailable).add(location);
@@ -134,7 +135,7 @@ public class YamlFactory extends FlatFactory {
     public void removeWorld(final Key worldKey) {} // does not do anything for yaml.
 
     @Override
-    public String addCrateLocation(final String crateId, final Key worldKey, final String id, final int x, final int y, final int z) {
+    public String addCrateLocation(final String crateId, final Key worldKey, final String id, final int x, final int y, final int z, final float yaw) {
         final CommentedConfigurationNode configuration = Files.locations.getConfiguration();
 
         final CommentedConfigurationNode section = configuration.node("Locations");
@@ -149,6 +150,8 @@ public class YamlFactory extends FlatFactory {
         setValue(section.node(id, "X"), Integer.class, x);
         setValue(section.node(id, "Y"), Integer.class, y);
         setValue(section.node(id, "Z"), Integer.class, z);
+
+        if (yaw != 0.0f) setValue(section.node(id, "Yaw"), Float.class, yaw);
 
         Files.locations.save();
 

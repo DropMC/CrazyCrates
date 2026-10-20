@@ -1,5 +1,7 @@
 package com.badbones69.crazycrates.paper.api.objects;
 
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import us.crazycrew.crazycrates.api.enums.messages.Message;
 import com.badbones69.crazycrates.paper.api.CrazyCratesPaper;
 import com.badbones69.crazycrates.paper.api.PrizeManager;
 import com.badbones69.crazycrates.paper.api.objects.buttons.Button;
@@ -8,6 +10,9 @@ import com.badbones69.crazycrates.paper.managers.ButtonManager;
 import com.badbones69.crazycrates.paper.tasks.menus.CratePreviewMenu;
 import com.badbones69.crazycrates.paper.tasks.menus.CrateTierMenu;
 import com.badbones69.crazycrates.paper.api.objects.crates.CrateHologram;
+import com.badbones69.crazycrates.paper.api.objects.crates.CrateAnimation;
+import com.badbones69.crazycrates.paper.api.objects.crates.CrateModel;
+import com.badbones69.crazycrates.paper.api.objects.crates.CratePlaceable;
 import com.badbones69.crazycrates.paper.api.enums.other.keys.ItemKeys;
 import com.badbones69.crazycrates.paper.managers.BukkitUserManager;
 import com.badbones69.crazycrates.paper.tasks.crates.CrateManager;
@@ -40,6 +45,7 @@ import com.badbones69.crazycrates.paper.tasks.crates.other.AbstractCrateManager;
 import org.jetbrains.annotations.NotNull;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import com.ryderbelserion.fusion.core.utils.StringUtils;
 import org.bukkit.inventory.ItemStack;
 import com.badbones69.crazycrates.paper.utils.MiscUtils;
 import java.nio.file.Path;
@@ -78,6 +84,7 @@ public class Crate {
     private int maxSlots;
     private String previewName;
     private boolean previewToggle;
+    private String previewChance = "";
     private boolean borderToggle;
     private boolean airToggle;
 
@@ -98,6 +105,11 @@ public class Crate {
 
     private List<Tier> tiers;
     private CrateHologram hologram;
+    private CrateModel model = new CrateModel();
+
+    private CratePlaceable placeable = CratePlaceable.from(null, "");
+
+    private CrateAnimation animation;
 
     private int maxMassOpen;
     private int requiredKeys;
@@ -266,6 +278,7 @@ public class Crate {
 
         this.crateType = crateType;
         this.previewToggle = this.section.getBoolean("Preview.Toggle", false);
+        this.previewChance = this.section.getString("Preview.Chance-Format", "");
         this.borderToggle = this.section.getBoolean("Preview.Glass.Toggle", false);
         this.airToggle = this.section.getBoolean("Settings.Border.Glass-Border.Air", true);
 
@@ -318,6 +331,9 @@ public class Crate {
         this.sound = config.hasProperty(CrateKeys.need_key_sound) ? config.getProperty(CrateKeys.need_key_sound) : this.section.getString("Settings.Requirements.Key.Sound.Name", "entity.villager.no");
 
         this.hologram = hologram;
+        this.model = CrateModel.from(section.getConfigurationSection("Model"));
+        this.placeable = CratePlaceable.from(section.getConfigurationSection("Placeable"), this.name);
+        this.animation = CrateAnimation.from(section);
 
         switch (this.crateType) {
             case cosmic -> {
@@ -1026,6 +1042,28 @@ public class Crate {
     }
 
     /**
+     * @return the model shown at the crate's locations, disabled when the crate has none.
+     */
+    public @NotNull final CrateModel getModel() {
+        return this.model;
+    }
+
+    /**
+     * @return the item an admin places to set the crate down, disabled when the crate has none.
+     */
+    public @NotNull final CratePlaceable getPlaceable() {
+        return this.placeable;
+    }
+
+    /**
+     * @return how a {@code Physical} crate opens in the world, and the particles around it while idle; null for the
+     *         menu crate, which has no section
+     */
+    public final CrateAnimation getAnimation() {
+        return this.animation;
+    }
+
+    /**
      * Get prizes for tier specific preview gui's
      *
      * @param player The player
@@ -1037,7 +1075,7 @@ public class Crate {
 
         for (final Prize prize : getPrizes()) {
             if (tier == null) {
-                prizes.add(prize.getDisplayItem(player, this));
+                prizes.add(previewItem(player, prize));
 
                 continue;
             }
@@ -1048,10 +1086,62 @@ public class Crate {
                 continue;
             }
 
-            prizes.add(prize.getDisplayItem(player, this));
+            prizes.add(previewItem(player, prize));
         }
 
         return prizes;
+    }
+
+    /**
+     * A prize as the preview shows it, without attribute lines and with the crate's {@code Preview.Chance-Format} after its
+     * name. A player who already owns the prize (holds one of its blacklist permissions) sees the alternative prize they
+     * would get instead, with lore saying so above the prize's own.
+     */
+    private @NotNull ItemStack previewItem(@NotNull final Player player, @NotNull final Prize prize) {
+        final ItemStack display = ItemUtil.hideAttributes(prize.getDisplayItem(player, this).clone());
+        final Prize alternative = prize.getAlternativePrize();
+
+        if (alternative == null || alternative.getItems().isEmpty() || !prize.hasPermission(player)) {
+            display.setData(DataComponentTypes.CUSTOM_NAME, previewName(display, prize));
+
+            return display;
+        }
+
+        // a copy: the builder hands out its own stack, the one the prize later gives, so the preview lore would go with it.
+        final ItemStack item = ItemUtil.hideAttributes(alternative.getItems().getFirst().asItemStack(player).clone());
+
+        final List<Component> lore = new ArrayList<>(List.of(
+                ItemUtil.loreLine(Message.crate_preview_owned.getMessage(player, Map.of("{prize}", prize.getPrizeName()))),
+                ItemUtil.loreLine(Message.crate_preview_alternative.getMessage(player, Map.of(
+                        "{amount}", String.valueOf(item.getAmount()),
+                        "{item}", PlainTextComponentSerializer.plainText().serialize(item.effectiveName())
+                )))
+        ));
+
+        final ItemLore own = display.getData(DataComponentTypes.LORE);
+
+        if (own != null && !own.lines().isEmpty()) {
+            lore.add(Component.empty());
+            lore.addAll(own.lines());
+        }
+
+        item.setData(DataComponentTypes.LORE, ItemLore.lore(lore));
+        item.setData(DataComponentTypes.CUSTOM_NAME, previewName(display, prize));
+
+        return item;
+    }
+
+    /**
+     * @return the prize's name, followed by its drop chance when the crate sets {@code Preview.Chance-Format}
+     */
+    private @NotNull Component previewName(@NotNull final ItemStack display, @NotNull final Prize prize) {
+        final Component name = display.effectiveName();
+
+        if (this.previewChance.isBlank() || prize.getWeight() <= 0.0) return name;
+
+        final double chance = this.crateType != CrateType.casino && this.crateType != CrateType.cosmic ? getChance(prize.getWeight()) : getTierChance(prize.getWeight());
+
+        return name.append(ItemUtil.loreLine(this.previewChance.replace("%chance%", StringUtils.format(chance))));
     }
 
     public @NotNull final Map<String, CrateButton> getButtons() {

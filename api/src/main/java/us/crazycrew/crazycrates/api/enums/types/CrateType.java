@@ -56,7 +56,12 @@ public enum CrateType {
     /**
      * Definitely going to war over what you win.
      */
-    war("War");
+    war("War"),
+    /**
+     * Opens in the world with no menu: the key goes into the crate, it bursts open and the prize floats above it, the way
+     * PhoenixCrates opened its crates. Only the player opening it sees the animation.
+     */
+    physical("Physical");
     
     private final String name;
 

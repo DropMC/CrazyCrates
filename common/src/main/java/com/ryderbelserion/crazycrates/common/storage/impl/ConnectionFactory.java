@@ -11,7 +11,11 @@ import java.util.Optional;
 @NullMarked
 public abstract class ConnectionFactory {
 
-    public abstract String addCrateLocation(final String crateId, final Key worldKey, final String id, final int x, final int y, final int z);
+    public abstract String addCrateLocation(final String crateId, final Key worldKey, final String id, final int x, final int y, final int z, final float yaw);
+
+    public String addCrateLocation(final String crateId, final Key worldKey, final String id, final int x, final int y, final int z) {
+        return addCrateLocation(crateId, worldKey, id, x, y, z, 0.0f);
+    }
 
     public abstract String addCrateLocation(final String crateId, final Key worldKey, final int x, final int y, final int z);
 

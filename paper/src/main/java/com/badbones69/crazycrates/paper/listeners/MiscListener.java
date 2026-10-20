@@ -23,6 +23,9 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import com.badbones69.crazycrates.paper.support.models.ModelManager;
 import com.badbones69.crazycrates.paper.CrazyCrates;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -33,6 +36,7 @@ import org.bukkit.inventory.ItemStack;
 import com.badbones69.crazycrates.paper.tasks.crates.CrateManager;
 import us.crazycrew.crazycrates.api.enums.types.CrateType;
 import us.crazycrew.crazycrates.api.enums.types.KeyType;
+import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 import java.util.UUID;
 
@@ -109,6 +113,22 @@ public class MiscListener implements Listener {
         if (count > 0) {
             Message.crate_respins_claimed.sendMessage(player, "{amount}", String.valueOf(count));
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+        forgetModelViewer(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        forgetModelViewer(event.getPlayer());
+    }
+
+    private void forgetModelViewer(@NotNull final Player player) {
+        final ModelManager models = this.crateManager.getModels();
+
+        if (models != null) models.forgetViewer(player);
     }
 
     @EventHandler(ignoreCancelled = true)

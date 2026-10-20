@@ -233,6 +233,9 @@ public enum Message {
 
     crate_pulls_max("", "crates.pulls.max", "{prefix}<red>This prize can no longer be obtained, {pulls}/{maxpulls}", "crates", "pulls", "max"),
 
+    crate_preview_owned("", "crates.preview.owned", "<gray>You already have <gold>{prize}<gray>.", "crates", "preview", "owned"),
+    crate_preview_alternative("", "crates.preview.alternative", "<gray>If you win it, you get <gold>{amount}x {item} <gray>instead.", "crates", "preview", "alternative"),
+
     feature_disabled("Messages.Feature-Disabled", "misc.feature.disabled", "{prefix}<red>This feature is disabled.", "misc", "feature-disabled");
 
     private final CrazyCrates platform = CratesProvider.api();

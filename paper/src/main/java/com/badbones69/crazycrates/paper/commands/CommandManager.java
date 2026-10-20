@@ -28,6 +28,7 @@ import com.badbones69.crazycrates.paper.tasks.crates.CrateManager;
 import com.ryderbelserion.fusion.paper.builders.items.PlayerBuilder;
 import dev.triumphteam.cmd.bukkit.BukkitCommandManager;
 import dev.triumphteam.cmd.core.suggestion.SuggestionKey;
+import us.crazycrew.crazycrates.api.config.impl.types.config.gui.GuiKeys;
 import org.bukkit.Server;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -56,7 +57,7 @@ public class CommandManager {
         commandManager.registerSuggestion(SuggestionKey.of("crates"), (_ -> {
             final List<String> crates = new ArrayList<>(crateManager.getCrateNames(true));
 
-            crates.add("Menu");
+            if (platform.getConfigManager().getConfig().getProperty(GuiKeys.is_crate_menu_enabled)) crates.add("Menu");
 
             return crates;
         }));

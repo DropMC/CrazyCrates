@@ -53,6 +53,10 @@ public final class StorageHolder {
         return this.factory.addCrateLocation(crateName, worldKey, id, x, y, z);
     }
 
+    public String addCrateLocation(final String crateName, final Key worldKey, final int x, final int y, final int z, final float yaw) {
+        return this.factory.addCrateLocation(crateName, worldKey, UUID.randomUUID().toString(), x, y, z, yaw);
+    }
+
     public String addCrateLocation(final String crateName, final Key worldKey, final int x, final int y, final int z) {
         return addCrateLocation(crateName, worldKey, UUID.randomUUID().toString(), x, y, z);
     }

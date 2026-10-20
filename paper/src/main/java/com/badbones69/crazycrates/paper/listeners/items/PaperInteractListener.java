@@ -3,6 +3,7 @@ package com.badbones69.crazycrates.paper.listeners.items;
 import com.badbones69.crazycrates.paper.CrazyCrates;
 import com.badbones69.crazycrates.paper.api.CrazyCratesPaper;
 import com.badbones69.crazycrates.paper.api.events.CrateInteractEvent;
+import com.badbones69.crazycrates.paper.listeners.crates.CratePlaceListener;
 import com.badbones69.crazycrates.paper.tasks.crates.CrateManager;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -54,7 +55,7 @@ public class PaperInteractListener implements Listener {
                     return;
                 }
 
-                if (player.isSneaking() && player.hasPermission("crazycrates.admin") && this.crateManager.removeCrateByLocation(player, location)) {
+                if (player.isSneaking() && player.hasPermission(CratePlaceListener.PERMISSION) && this.crateManager.breakCrate(player, location)) {
                     event.setCancelled(true);
                 }
             }
@@ -76,6 +77,11 @@ public class PaperInteractListener implements Listener {
         }
 
         final Location location = block.getLocation();
+
+        final Player player = event.getPlayer();
+
+        // an admin breaking the crate, handled by onEditorClick; same priority, so the order between the two is not fixed.
+        if (event.getAction() == Action.LEFT_CLICK_BLOCK && player.isSneaking() && player.hasPermission(CratePlaceListener.PERMISSION)) return;
 
         if (this.crateManager.isCrateLocation(location)) {
             new CrateInteractEvent(event, location).callEvent();

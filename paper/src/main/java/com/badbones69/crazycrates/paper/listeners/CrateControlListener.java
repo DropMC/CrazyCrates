@@ -7,6 +7,7 @@ import com.badbones69.crazycrates.paper.managers.InventoryManager;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
+import com.badbones69.crazycrates.paper.tasks.crates.animations.CrateOpening;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPistonExtendEvent;
@@ -64,6 +65,8 @@ public class CrateControlListener implements Listener {
         final UUID uuid = player.getUniqueId();
 
         this.inventoryManager.removePreviewViewer(uuid);
+
+        CrateOpening.abort(player); // pays the prize out while the player can still receive it.
 
         this.cacheManager.getActiveCrate(uuid).ifPresent(activeCrate -> {
             final Crate crate = activeCrate.getCrate();

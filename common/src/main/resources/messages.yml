@@ -149,6 +149,12 @@ crates:
     #
     # A list of available placeholders: {maxpulls}, {pulls}
     max: "{prefix}<red>This prize can no longer be obtained, {pulls}/{maxpulls}"
+  # Preview lore for a prize the player already owns (holds a blacklist permission) and an alternative prize replaces.
+  preview:
+    # A list of available placeholders: {prize}
+    owned: "<gray>You already have <gold>{prize}<gray>."
+    # A list of available placeholders: {amount}, {item}
+    alternative: "<gray>If you win it, you get <gold>{amount}x {item} <gray>instead."
   # Respin messages.
   respins:
     # A list of available placeholders: {status}

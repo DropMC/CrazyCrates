@@ -56,9 +56,10 @@ public class RootKeys implements IPropertyHolder {
             " -> FancyHologramsV3",
             " -> FancyHolograms",
             " -> CMI",
+            " -> Builtin (text displays, no plugin needed)",
             " -> None",
             " ",
-            "If the option is set to blank, it'll pick whatever plugin it feels like picking.",
+            "If the option is set to blank, it'll pick whatever plugin it feels like picking, or Builtin when there is none.",
             "Set the value to None if you do not want any."
     })
     public static final Property<String> get_hologram_plugin = newProperty("", "root", "hologram-plugin");

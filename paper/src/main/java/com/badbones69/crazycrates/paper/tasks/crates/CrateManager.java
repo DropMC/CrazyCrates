@@ -25,6 +25,7 @@ import com.badbones69.crazycrates.paper.listeners.items.NexoInteractListener;
 import com.badbones69.crazycrates.paper.listeners.items.OraxenInteractListener;
 import com.badbones69.crazycrates.paper.managers.BukkitKeyManager;
 import com.badbones69.crazycrates.paper.managers.events.enums.EventType;
+import com.badbones69.crazycrates.paper.support.holograms.types.BuiltinHologramSupport;
 import com.badbones69.crazycrates.paper.support.holograms.types.CMIHologramsSupport;
 import com.badbones69.crazycrates.paper.tasks.crates.other.CosmicCrateManager;
 import com.badbones69.crazycrates.paper.tasks.crates.other.quadcrates.QuadCrateManager;
@@ -77,6 +78,8 @@ import us.crazycrew.crazycrates.api.enums.types.CrateType;
 import us.crazycrew.crazycrates.api.enums.types.KeyType;
 import com.badbones69.crazycrates.paper.api.enums.other.keys.ItemKeys;
 import com.badbones69.crazycrates.paper.support.holograms.HologramManager;
+import com.badbones69.crazycrates.paper.support.models.ModelManager;
+import com.badbones69.crazycrates.paper.support.models.types.BetterModelSupport;
 import com.badbones69.crazycrates.paper.api.objects.Crate;
 import com.badbones69.crazycrates.paper.api.objects.crates.CrateLocation;
 import com.badbones69.crazycrates.paper.api.objects.Prize;
@@ -87,6 +90,11 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.Material;
+import com.badbones69.crazycrates.paper.utils.CrateFacing;
+import com.badbones69.crazycrates.paper.tasks.crates.types.PhysicalCrate;
+import com.badbones69.crazycrates.paper.tasks.crates.animations.CrateIdleEffects;
+import com.badbones69.crazycrates.paper.api.objects.crates.CratePlaceable;
 import org.jetbrains.annotations.NotNull;
 import com.badbones69.crazycrates.paper.CrazyCrates;
 import java.io.IOException;
@@ -201,6 +209,10 @@ public class CrateManager {
     }
 
     private HologramManager holograms;
+
+    private ModelManager models;
+
+    private final CrateIdleEffects idleEffects = new CrateIdleEffects();
 
     private boolean giveNewPlayersKeys;
 
@@ -352,6 +364,12 @@ public class CrateManager {
                 this.holograms = new CMIHologramsSupport();
             }
 
+            case "builtin" -> {
+                if (this.holograms instanceof BuiltinHologramSupport) return;
+
+                this.holograms = new BuiltinHologramSupport();
+            }
+
             case "none" -> {}
 
             default -> {
@@ -373,7 +391,11 @@ public class CrateManager {
 
                 if (hologram.isEnabled()) {
                     this.holograms = hologram.isClassPresent("com.fancyinnovations.fancyholograms.api.FancyHolograms") ? new FancyHologramsV3Support() : new FancyHologramsV2Support();
+
+                    break;
                 }
+
+                if (!(this.holograms instanceof BuiltinHologramSupport)) this.holograms = new BuiltinHologramSupport(); // no plugin: text displays.
             }
         }
 
@@ -448,6 +470,17 @@ public class CrateManager {
         if (this.holograms != null) {
             this.holograms.purge(false);
         }
+
+        // Same for the models, which BetterModel only offers as an optional dependency.
+        if (this.models == null && Plugins.better_model.isEnabled()) {
+            this.models = new BetterModelSupport();
+        }
+
+        if (this.models != null) {
+            this.models.purge();
+        }
+
+        this.idleEffects.purge();
 
         this.fusion.log(Level.INFO, "Loading all crate information...");
 
@@ -711,6 +744,67 @@ public class CrateManager {
 
         final CrateLocation crateLocation = optional.get();
 
+        forgetLocation(crateLocation);
+
+        Message.physical_crate_removed.sendMessage(player, "{id}", crateLocation.getID());
+
+        return true;
+    }
+
+    /**
+     * Sets a crate down where an admin placed its {@link Crate#getPlaceable() placeable item}. Runs on the block's region,
+     * which a block place event already is.
+     *
+     * @param location the block, with the yaw the crate faces
+     * @param crate the crate
+     * @return false when the block already is a crate
+     */
+    public boolean placeCrate(@NotNull final Location location, @NotNull final Crate crate) {
+        if (isCrateLocation(location)) return false;
+
+        addCrateLocation(location, crate);
+
+        return true;
+    }
+
+    /**
+     * Takes a crate out of the world: its location, hologram and model go, and a placeable crate's block is cleared and its
+     * item given back to the admin. Runs on the block's region, where the admin's click is handled.
+     *
+     * @param player the admin breaking it
+     * @param location the crate's block
+     * @return false when the block is no crate
+     */
+    public boolean breakCrate(@NotNull final Player player, @NotNull final Location location) {
+        final Optional<CrateLocation> optional = getCrateLocation(location);
+
+        if (optional.isEmpty()) return false;
+
+        final CrateLocation crateLocation = optional.get();
+        final CratePlaceable placeable = crateLocation.getCrate().getPlaceable();
+
+        forgetLocation(crateLocation);
+
+        if (placeable.isEnabled()) location.getBlock().setType(Material.AIR); // no item back: admins place crates from creative.
+
+        Message.physical_crate_removed.sendMessage(player, "{id}", crateLocation.getID());
+
+        return true;
+    }
+
+    /**
+     * Gets the crate a placeable item sets down.
+     *
+     * @param item the item
+     * @return the crate, or null when the item is no placeable crate
+     */
+    public @Nullable Crate getCrateFromPlaceable(@NotNull final ItemStack item) {
+        if (item.isEmpty()) return null;
+
+        return getCrateFromName(item.getPersistentDataContainer().get(ItemKeys.crate_block.getNamespacedKey(), PersistentDataType.STRING));
+    }
+
+    private void forgetLocation(@NotNull final CrateLocation crateLocation) {
         final String id = crateLocation.getID();
 
         this.storageHolder.removeCrateLocation(id);
@@ -719,13 +813,15 @@ public class CrateManager {
             this.holograms.removeHologram(id);
         }
 
+        if (this.models != null) {
+            this.models.removeModel(id);
+        }
+
+        this.idleEffects.stop(id);
+
         onRegion(crateLocation.getLocation(), () -> new ChunkCrate(crateLocation.getLocation()).remove());
 
         this.locations.remove(id);
-
-        Message.physical_crate_removed.sendMessage(player, "{id}", id);
-
-        return true;
     }
 
     public boolean addCrateByLocation(@NotNull final Player player, @NotNull final Location location, @Nullable final Crate crate) {
@@ -750,6 +846,8 @@ public class CrateManager {
 
             return false;
         }
+
+        location.setYaw(CrateFacing.snap(player.getYaw() + 180.0f)); // the crate faces whoever set it.
 
         if (!isCrateLocation(location)) {
             addCrateLocation(location, crate);
@@ -815,7 +913,8 @@ public class CrateManager {
                 location.getWorld().key(),
                 location.getBlockX(),
                 location.getBlockY(),
-                location.getBlockZ()
+                location.getBlockZ(),
+                location.getYaw()
         );
 
         new ChunkCrate(location).init(id);
@@ -825,6 +924,8 @@ public class CrateManager {
         if (this.holograms != null && !crate.getCrateType().equals(CrateType.menu) && crate.getHologram().isEnabled()) {
             this.holograms.createHologram(location, crate, id);
         }
+
+        createModel(location, crate, id);
     }
 
     /**
@@ -861,7 +962,7 @@ public class CrateManager {
 
         if (crate == null) return false;
 
-        final Location value = new Location(world, location.getX(), location.getY(), location.getZ());
+        final Location value = new Location(world, location.getX(), location.getY(), location.getZ(), location.getYaw(), 0.0f);
         final String id = location.getId();
 
         onRegion(value, () -> new ChunkCrate(value).init(id));
@@ -872,7 +973,19 @@ public class CrateManager {
             this.holograms.createHologram(value, crate, id);
         }
 
+        createModel(value, crate, id);
+
         return true;
+    }
+
+    private void createModel(@NotNull final Location location, @NotNull final Crate crate, @NotNull final String id) {
+        if (crate.getCrateType().equals(CrateType.menu)) return;
+
+        if (this.models != null && crate.getModel().isEnabled()) {
+            this.models.createModel(location, crate, id);
+        }
+
+        this.idleEffects.start(location, crate, id);
     }
 
     /**
@@ -966,7 +1079,8 @@ public class CrateManager {
             if (crateType.equals(CrateType.crate_on_the_go) ||
                     crateType.equals(CrateType.fire_cracker) ||
                     crateType.equals(CrateType.quick_crate) ||
-                    crateType.equals(CrateType.quad_crate)
+                    crateType.equals(CrateType.quad_crate) ||
+                    crateType.equals(CrateType.physical)
             ) {
                 if (crate.isPreviewEnabled()) {
                     this.inventoryManager.openNewCratePreview(player, crate);
@@ -999,6 +1113,7 @@ public class CrateManager {
             case fire_cracker -> crateBuilder = new FireCrackerCrate(crate, player, location, 45);
             case crate_on_the_go -> crateBuilder = new CrateOnTheGo(crate, player, location);
             case quick_crate -> crateBuilder = new QuickCrate(crate, player, location);
+            case physical -> crateBuilder = new PhysicalCrate(crate, player, location);
             default -> {
                 crateBuilder = new CsgoCrate(crate, player, location, 27);
 
@@ -1572,6 +1687,17 @@ public class CrateManager {
      */
     public @Nullable final HologramManager getHolograms() {
         return this.holograms;
+    }
+
+    /**
+     * @return the particles shown around idle crates
+     */
+    public @NotNull final CrateIdleEffects getIdleEffects() {
+        return this.idleEffects;
+    }
+
+    public @Nullable final ModelManager getModels() {
+        return this.models;
     }
 
     /**

@@ -1,5 +1,8 @@
 package com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migrator.types.plugins;
 
+import java.util.LinkedHashMap;
+import com.badbones69.crazycrates.paper.utils.CrateFacing;
+import org.bukkit.block.BlockFace;
 import com.badbones69.crazycrates.paper.api.enums.other.Plugins;
 import com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migrator.ICrateMigrator;
 import com.badbones69.crazycrates.paper.commands.crates.types.admin.crates.migrator.enums.MigrationType;
@@ -46,7 +49,7 @@ import java.util.regex.Pattern;
  */
 public class PhoenixCratesMigrator extends ICrateMigrator {
 
-    private static final String DEFAULT_CRATE_TYPE = "CSGO";
+    private static final String DEFAULT_CRATE_TYPE = "Physical";
 
     private static final NamespacedKey NEXO_ID = new NamespacedKey("nexo", "id");
 
@@ -131,6 +134,9 @@ public class PhoenixCratesMigrator extends ICrateMigrator {
 
         writeCrate(root, source, displayName);
         writeHologram(root, source, displayName);
+        writeModel(root, source, notMigrated);
+        writePlaceable(root, source, displayName);
+        writeAnimation(root, source, notMigrated);
 
         if (!writeKey(root, phoenix, source, displayName, crateName)) return false;
 
@@ -197,6 +203,143 @@ public class PhoenixCratesMigrator extends ICrateMigrator {
         set(root, "Preview.Glass.Toggle", true);
         set(root, "Preview.Glass.Name", " ");
         set(root, "Preview.Glass.Item", "gray_stained_glass_pane");
+    }
+
+    /**
+     * Turns a model engine, {@code MODEL_ENGINE;{model;open_1;open_2;open_3;x;y;z;idle;close}} or the same with
+     * {@code BETTER_MODEL}, into a {@code Model} section shown through BetterModel, with the animations each opening phase
+     * plays.
+     */
+    private void writeModel(@NotNull final ConfigurationSection root, @NotNull final YamlConfiguration source, @NotNull final List<String> notMigrated) {
+        final String engine = source.getString("engine", "VANILLA_BLOCK");
+
+        if (engine.equals("VANILLA_BLOCK")) return;
+
+        final int open = engine.indexOf(";{");
+
+        final String type = open < 0 ? engine : engine.substring(0, open);
+        final String[] parts = open < 0 || !engine.endsWith("}") ? new String[0] : engine.substring(open + 2, engine.length() - 1).split(";");
+
+        if (!type.equals("MODEL_ENGINE") && !type.equals("BETTER_MODEL") || parts.length < 9) {
+            notMigrated.add("engine " + engine);
+
+            return;
+        }
+
+        set(root, "Model.Toggle", true);
+        set(root, "Model.Name", parts[0]);
+        set(root, "Model.Idle-Animation", parts[7]);
+        set(root, "Model.Range", 48);
+        set(root, "Model.Offset.X", 0.5 + parseDouble(parts[4]));
+        set(root, "Model.Offset.Y", parseDouble(parts[5]));
+        set(root, "Model.Offset.Z", 0.5 + parseDouble(parts[6]));
+        set(root, "Model.Open-Animations", List.of(parts[1], parts[2], parts[3]));
+        set(root, "Model.Close-Animation", parts[8]);
+    }
+
+    /**
+     * The crate's {@code item} becomes the item an admin places to set it down. A crate shown as a model leaves an
+     * invisible barrier under it, so the block can still be clicked.
+     */
+    private void writePlaceable(@NotNull final ConfigurationSection root, @NotNull final YamlConfiguration source, @NotNull final String displayName) {
+        final String blockMaterial = source.getString("block-material", "chest").toLowerCase();
+        final ItemStack item = resolveItem(source, source.getString("item.material", blockMaterial));
+
+        final boolean model = !source.getString("engine", "VANILLA_BLOCK").equals("VANILLA_BLOCK");
+
+        // a model crate is placed as the barrier it stands on; any other item would show its own block under the model.
+        final String itemName = model ? "barrier" : item != null && item.getType().isBlock() ? item.getType().getKey().getKey() : blockMaterial;
+
+        set(root, "Placeable.Item", itemName);
+        set(root, "Placeable.Name", displayName);
+        set(root, "Placeable.Lore", List.of());
+        set(root, "Placeable.Block", model ? "barrier" : blockMaterial);
+    }
+
+    /**
+     * The three phases of {@code opening-animation} and the {@code idle-effects}, for the {@code Physical} crate type. A
+     * phase is either a bare id or a section with an {@code id} and its {@code properties}; the ones this port lacks
+     * fall back to the closest it has.
+     */
+    private void writeAnimation(@NotNull final ConfigurationSection root, @NotNull final YamlConfiguration source, @NotNull final List<String> notMigrated) {
+        final String preOpen = phaseId(source, "pre-open");
+        final String open = phaseId(source, "open");
+        final String display = phaseId(source, "display");
+
+        set(root, "Animation.Pre-Open.Type", switch (preOpen) {
+            case "KEY_OPENER", "CRACK" -> preOpen;
+            default -> "NONE";
+        });
+
+        set(root, "Animation.Open.Type", open.equals("COMPACT") ? "COMPACT" : "SWIRL");
+        set(root, "Animation.Open.Color", source.getString("opening-animation.open.properties.color", "#FFFFFF"));
+
+        set(root, "Animation.Display.Type", display.equals("PHYSICAL_ITEM") ? "PHYSICAL_ITEM" : "DEFAULT");
+        set(root, "Animation.Display.Color", source.getString("opening-animation.display.properties.color", "#FFFFFF"));
+
+        set(root, "Animation.Display-Item-Position.X", source.getDouble("extra-settings.animation.display-item-position.x", 0.0));
+        set(root, "Animation.Display-Item-Position.Y", source.getDouble("extra-settings.animation.display-item-position.y", 2.0));
+        set(root, "Animation.Display-Item-Position.Z", source.getDouble("extra-settings.animation.display-item-position.z", 0.0));
+
+        if (!List.of("DEFAULT", "KEY_OPENER", "CRACK").contains(preOpen)) notMigrated.add("pre-open animation " + preOpen + " (now NONE)");
+        if (!List.of("SWIRL", "COMPACT").contains(open)) notMigrated.add("open animation " + open + " (now SWIRL)");
+        if (!List.of("DEFAULT", "PHYSICAL_ITEM").contains(display)) notMigrated.add("display animation " + display + " (now DEFAULT)");
+
+        final List<Map<String, Object>> effects = new ArrayList<>();
+
+        for (final String effect : source.getStringList("idle-effects")) {
+            final Map<String, Object> parsed = idleEffect(effect);
+
+            if (parsed == null) {
+                notMigrated.add("idle effect " + effect);
+
+                continue;
+            }
+
+            effects.add(parsed);
+        }
+
+        if (!effects.isEmpty()) set(root, "Idle-Effects", effects);
+    }
+
+    private @NotNull String phaseId(@NotNull final YamlConfiguration source, @NotNull final String phase) {
+        final String path = "opening-animation." + phase;
+
+        return (source.isConfigurationSection(path) ? source.getString(path + ".id", "DEFAULT") : source.getString(path, "DEFAULT")).toUpperCase();
+    }
+
+    /**
+     * Reads {@code DEFAULT;{REDSTONE;#ff8a1f;0.0;0.0;0.0;1.0;0.1;2}}: the effect, then particle, color, offset x/y/z,
+     * velocity, spread and amount. Only the {@code DEFAULT} effect (particles at the middle of the crate) is ported.
+     */
+    private @Nullable Map<String, Object> idleEffect(@NotNull final String effect) {
+        final int open = effect.indexOf(";{");
+
+        if (open < 0 || !effect.endsWith("}") || !effect.substring(0, open).equals("DEFAULT")) return null;
+
+        final String[] parts = effect.substring(open + 2, effect.length() - 1).split(";");
+
+        if (parts.length < 8) return null;
+
+        final String particle = parts[0].equalsIgnoreCase("REDSTONE") ? "dust" : parts[0].toLowerCase();
+
+        final Map<String, Object> parsed = new LinkedHashMap<>();
+        parsed.put("Particle", particle);
+        parsed.put("Color", parts[1]);
+        parsed.put("Offset", Map.of("X", parseDouble(parts[2]), "Y", parseDouble(parts[3]), "Z", parseDouble(parts[4])));
+        parsed.put("Velocity", parseDouble(parts[5]));
+        parsed.put("Spread", parseDouble(parts[6]));
+        parsed.put("Amount", (int) parseDouble(parts[7]));
+
+        return parsed;
+    }
+
+    private double parseDouble(@NotNull final String value) {
+        try {
+            return Double.parseDouble(value);
+        } catch (final NumberFormatException _) {
+            return 0.0;
+        }
     }
 
     private void writeHologram(@NotNull final ConfigurationSection root, @NotNull final YamlConfiguration source, @NotNull final String displayName) {
@@ -276,10 +419,13 @@ public class PhoenixCratesMigrator extends ICrateMigrator {
 
             if (reward == null || !reward.getBoolean("enabled", true)) continue;
 
-            final ConfigurationSection prize = root.createSection("Prizes." + id);
+            // Named after the reward's identifier, the id other plugins (announcements, logs) already know it by.
+            final String name = reward.getString("identifier", id);
+
+            final ConfigurationSection prize = root.createSection("Prizes." + name);
 
             if (!writePrize(prize, source, reward)) {
-                root.set("Prizes." + id, null);
+                root.set("Prizes." + name, null);
 
                 notMigrated.add("reward " + reward.getString("identifier", id) + " (an item could not be built)");
 
@@ -375,7 +521,20 @@ public class PhoenixCratesMigrator extends ICrateMigrator {
                 continue;
             }
 
-            this.storageHolder.addCrateLocation(crateName, world, Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+            this.storageHolder.addCrateLocation(crateName, world, Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), Integer.parseInt(parts[3]), yawOf(parts));
+        }
+    }
+
+    /** PhoenixCrates stores where a crate faces as a fifth part, one of the 16 block faces ({@code SOUTH_WEST}). */
+    private float yawOf(@NotNull final String[] parts) {
+        if (parts.length < 5) return 0.0f;
+
+        try {
+            final Float yaw = CrateFacing.yawOf(BlockFace.valueOf(parts[4].toUpperCase()));
+
+            return yaw == null ? 0.0f : yaw;
+        } catch (final IllegalArgumentException _) {
+            return 0.0f;
         }
     }
 
@@ -488,12 +647,6 @@ public class PhoenixCratesMigrator extends ICrateMigrator {
     }
 
     private void listUnsupported(@NotNull final ConfigurationSection section, @NotNull final List<String> notMigrated) {
-        final String engine = section.getString("engine", "VANILLA_BLOCK");
-
-        if (!engine.equals("VANILLA_BLOCK")) notMigrated.add("engine " + engine);
-
-        if (section.contains("opening-animation")) notMigrated.add("its opening animation (now " + DEFAULT_CRATE_TYPE + ")");
-        if (!section.getStringList("idle-effects").isEmpty()) notMigrated.add("idle effects");
         if (section.getBoolean("reroll.enabled", false)) notMigrated.add("rerolls");
         if (section.getDouble("open-money-cost", 0.0) > 0) notMigrated.add("the opening cost");
         if (section.getInt("open-cooldown", 0) > 0) notMigrated.add("the opening cooldown");

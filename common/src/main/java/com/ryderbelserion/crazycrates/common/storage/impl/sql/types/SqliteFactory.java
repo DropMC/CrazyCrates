@@ -187,6 +187,7 @@ public final class SqliteFactory extends SqlFactory {
                    final int x = resultSet.getInt("x");
                    final int y = resultSet.getInt("y");
                    final int z = resultSet.getInt("z");
+                   final float yaw = resultSet.getFloat("yaw");
 
                    if (key == null) {
                        locations.get(CrateStatus.unavailable).add(new CrazyLocation(
@@ -207,7 +208,8 @@ public final class SqliteFactory extends SqlFactory {
                            id,
                            x,
                            y,
-                           z
+                           z,
+                           yaw
                    );
 
                    if (!this.plugin.isCrateAvailable(crateId)) {
@@ -232,10 +234,10 @@ public final class SqliteFactory extends SqlFactory {
     }
 
     @Override
-    public String addCrateLocation(final String crateId, final Key key, final String id, final int x, final int y, final int z) {
+    public String addCrateLocation(final String crateId, final Key key, final String id, final int x, final int y, final int z, final float yaw) {
         return CompletableFuture.supplyAsync(() -> {
             try (final Connection connection = this.source.getConnection(); final PreparedStatement statement =
-                    connection.prepareStatement("insert into crate_locations(id, world_id, crate_id, x, y, z) values(?, ?, ?, ?, ?, ?)")
+                    connection.prepareStatement("insert into crate_locations(id, world_id, crate_id, x, y, z, yaw) values(?, ?, ?, ?, ?, ?, ?)")
             ) {
                 statement.setString(1, id);
                 statement.setString(2, key.asString());
@@ -243,6 +245,7 @@ public final class SqliteFactory extends SqlFactory {
                 statement.setInt(4, x);
                 statement.setInt(5, y);
                 statement.setInt(6, z);
+                statement.setFloat(7, yaw);
 
                 statement.executeUpdate();
 

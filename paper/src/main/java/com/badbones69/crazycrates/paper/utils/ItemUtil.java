@@ -1,5 +1,10 @@
 package com.badbones69.crazycrates.paper.utils;
 
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.TooltipDisplay;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import com.badbones69.crazycrates.paper.CrazyCrates;
 import com.badbones69.crazycrates.paper.api.CrazyCratesPaper;
 import com.badbones69.crazycrates.paper.api.enums.other.keys.ItemKeys;
@@ -437,5 +442,32 @@ public class ItemUtil {
         }
 
         return itemBuilder;
+    }
+
+    /**
+     * Hides an item's attribute lines (damage, armor, speed), keeping whatever else its tooltip already hid.
+     *
+     * @param item the item, changed in place
+     * @return the item
+     */
+    public static @NotNull ItemStack hideAttributes(@NotNull final ItemStack item) {
+        final TooltipDisplay current = item.getData(DataComponentTypes.TOOLTIP_DISPLAY);
+        final TooltipDisplay.Builder builder = TooltipDisplay.tooltipDisplay();
+
+        if (current != null) {
+            builder.hideTooltip(current.hideTooltip()).hiddenComponents(current.hiddenComponents());
+        }
+
+        item.setData(DataComponentTypes.TOOLTIP_DISPLAY, builder.addHiddenComponents(DataComponentTypes.ATTRIBUTE_MODIFIERS).build());
+
+        return item;
+    }
+
+    /**
+     * @param text a MiniMessage line
+     * @return the line as item lore, not italic
+     */
+    public static @NotNull Component loreLine(@NotNull final String text) {
+        return MiniMessage.miniMessage().deserialize(text).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 }

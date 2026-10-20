@@ -25,6 +25,12 @@ dependencies:
       required: false
       join-classpath: true
 
+    # Model plugins
+    BetterModel:
+      load: BEFORE
+      required: false
+      join-classpath: true
+
     # Placeholder plugins
     PlaceholderAPI:
       load: BEFORE

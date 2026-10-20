@@ -23,6 +23,7 @@ public abstract class SqlFactory extends FlatFactory {
             "x bigint not null, " +
             "y bigint not null, " +
             "z bigint not null, " +
+            "yaw real not null default 0, " +
             "foreign key(world_id) references crate_worlds(world_id) on delete cascade)";
 
     protected HikariDataSource source;
@@ -32,6 +33,17 @@ public abstract class SqlFactory extends FlatFactory {
     }
 
     public abstract String url();
+
+    /** Tables made before crates had a facing have no yaw column; a crate in them faces south. */
+    private void addYawColumn(final Connection connection) throws SQLException {
+        try (final ResultSet columns = connection.getMetaData().getColumns(null, null, "crate_locations", "yaw")) {
+            if (columns.next()) return;
+        }
+
+        try (final Statement statement = connection.createStatement()) {
+            statement.executeUpdate("alter table crate_locations add column yaw real not null default 0");
+        }
+    }
 
     @Override
     public void init() {
@@ -45,6 +57,8 @@ public abstract class SqlFactory extends FlatFactory {
 
                     statement.executeBatch();
                 }
+
+                addYawColumn(connection);
             } catch (final SQLException exception) {
                 exception.printStackTrace();
             }

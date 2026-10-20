@@ -10,6 +10,8 @@ import com.badbones69.crazycrates.paper.listeners.CrateControlListener;
 import com.badbones69.crazycrates.paper.listeners.MiscListener;
 import com.badbones69.crazycrates.paper.listeners.crates.CrateInteractListener;
 import com.badbones69.crazycrates.paper.listeners.crates.CrateOpenListener;
+import com.badbones69.crazycrates.paper.listeners.crates.CratePlaceListener;
+import com.badbones69.crazycrates.paper.tasks.crates.animations.CrateOpening;
 import com.badbones69.crazycrates.paper.listeners.crates.types.CosmicCrateListener;
 import com.badbones69.crazycrates.paper.listeners.crates.types.MobileCrateListener;
 import com.badbones69.crazycrates.paper.listeners.crates.types.QuadCrateListener;
@@ -22,6 +24,7 @@ import com.badbones69.crazycrates.paper.managers.ButtonManager;
 import com.badbones69.crazycrates.paper.managers.InventoryManager;
 import com.badbones69.crazycrates.paper.support.MetricsWrapper;
 import com.badbones69.crazycrates.paper.support.holograms.HologramManager;
+import com.badbones69.crazycrates.paper.support.models.ModelManager;
 import com.badbones69.crazycrates.paper.support.placeholders.PlaceholderAPISupport;
 import com.badbones69.crazycrates.paper.tasks.crates.CrateManager;
 import com.badbones69.crazycrates.paper.utils.MiscUtils;
@@ -165,6 +168,7 @@ public final class CrazyCratesPaper extends CrazyCratesPlugin<CommandSender, Wor
                 new CrateInteractListener(),
                 new CrateControlListener(),
                 new CrateOpenListener(),
+                new CratePlaceListener(),
 
                 new PaperInteractListener()
         ).forEach(listener -> pluginManager.registerEvents(listener, this.plugin));
@@ -222,6 +226,8 @@ public final class CrazyCratesPaper extends CrazyCratesPlugin<CommandSender, Wor
         this.server.getAsyncScheduler().cancelTasks(this.plugin);
 
         if (this.crateManager != null) {
+            CrateOpening.abortAll(); // a key already spent pays out before the server stops.
+
             this.crateManager.purgeRewards();
 
             /*this.crateManager.getCrateLocations().forEach(crateLocation -> {
@@ -235,6 +241,14 @@ public final class CrazyCratesPaper extends CrazyCratesPlugin<CommandSender, Wor
             if (holograms != null) {
                 holograms.purge(true);
             }
+
+            final ModelManager models = this.crateManager.getModels();
+
+            if (models != null) {
+                models.purge();
+            }
+
+            this.crateManager.getIdleEffects().purge();
         }
 
         MiscUtils.janitor();
