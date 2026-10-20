@@ -5,12 +5,14 @@ import com.badbones69.crazycrates.paper.api.enums.other.keys.FileKeys;
 import com.badbones69.crazycrates.paper.api.objects.Tier;
 import com.badbones69.crazycrates.paper.CrazyCrates;
 import com.badbones69.crazycrates.paper.api.events.PlayerPrizeEvent;
+import com.badbones69.crazycrates.paper.api.events.PrizeItemsEvent;
 import com.badbones69.crazycrates.paper.api.objects.Crate;
 import com.badbones69.crazycrates.paper.api.objects.Prize;
 import com.badbones69.crazycrates.paper.managers.BukkitUserManager;
 import com.ryderbelserion.fusion.core.api.enums.Level;
 import com.ryderbelserion.fusion.core.utils.StringUtils;
 import com.ryderbelserion.fusion.paper.FusionPaper;
+import com.ryderbelserion.fusion.paper.builders.items.ItemBuilder;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.configuration.ConfigurationSection;
@@ -24,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import com.badbones69.crazycrates.paper.utils.MiscUtils;
 import org.jetbrains.annotations.Nullable;
 import us.crazycrew.crazycrates.api.enums.types.CrateType;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -134,7 +137,7 @@ public class PrizeManager {
             return;
         }
 
-        pluginManager.callEvent(new PlayerPrizeEvent(player, crate, prize));
+        pluginManager.callEvent(new PlayerPrizeEvent(player, crate, prize, location));
 
         if (prize.useFireworks()) {
             MiscUtils.spawnFirework(location, null);
@@ -155,9 +158,19 @@ public class PrizeManager {
             }
         }
 
-        MiscUtils.dropItems(prize.getEditorItems(), player); // drops any leftover editor items.
+        final List<ItemStack> items = new ArrayList<>(prize.getEditorItems()); // any leftover editor items.
 
-        MiscUtils.dropBuilders(prize.getItems(), player);
+        for (final ItemBuilder builder : prize.getItems()) {
+            items.add(builder.asItemStack(player));
+        }
+
+        if (!items.isEmpty()) {
+            final PrizeItemsEvent event = new PrizeItemsEvent(player, crate, prize, location, items);
+
+            pluginManager.callEvent(event);
+
+            if (!event.isHandled()) MiscUtils.dropItems(event.getItems(), player);
+        }
 
         for (final String command : crate.getPrizeCommands()) {
             runCommands(player, prize, crate, command);

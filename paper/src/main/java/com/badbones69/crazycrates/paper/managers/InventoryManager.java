@@ -9,6 +9,7 @@ import us.crazycrew.crazycrates.api.config.properties.PropertyManager;
 import us.crazycrew.crazycrates.api.enums.messages.Message;
 import com.badbones69.crazycrates.paper.CrazyCrates;
 import com.badbones69.crazycrates.paper.api.enums.other.keys.ItemKeys;
+import com.badbones69.crazycrates.paper.api.events.CratePreviewEvent;
 import com.badbones69.crazycrates.paper.api.objects.Crate;
 import com.badbones69.crazycrates.paper.api.objects.Tier;
 import com.ryderbelserion.fusion.paper.builders.gui.types.paginated.PaginatedGui;
@@ -127,6 +128,8 @@ public class InventoryManager {
 
             return;
         }
+
+        if (!new CratePreviewEvent(player, crate).callEvent()) return; // another plugin shows the preview.
 
         crate.getPreview(player).open();
     }
