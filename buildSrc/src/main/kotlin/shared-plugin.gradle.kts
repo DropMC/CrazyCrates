@@ -24,7 +24,7 @@ val isRelease: Boolean = status == "release"
 val isAlpha: Boolean = status == "alpha"
 val isBeta: Boolean = status == "beta"
 
-val commitHash: String = hash.subSequence(0, 7).toString()
+val commitHash: String = hash.take(7) // empty on a tag checkout, which has no branch to read it from.
 val changelog = rootProject.file("changelog.md").readText(Charsets.UTF_8)
 val content: String = if (isRelease) changelog else if (isBeta || isAlpha || isJenkins) {
     "[$commitHash](https://github.com/${rootProject.property("repository_owner")}/${rootProject.name}/commit/$commitHash) $commit"
