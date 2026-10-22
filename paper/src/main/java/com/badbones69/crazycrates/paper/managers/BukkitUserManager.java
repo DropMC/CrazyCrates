@@ -271,6 +271,14 @@ public class BukkitUserManager extends UserManager {
                         .filter(item -> ItemUtil.isSimilar(item, crate))
                         .toList();
 
+                // counted from the same stacks it takes from: with checkHand the inventory total can cover the amount
+                // while the hands cannot, and the loop below would then delete the hand keys before giving up.
+                currentKeys = items.stream().mapToInt(ItemStack::getAmount).sum();
+
+                if (amount > currentKeys) {
+                    break;
+                }
+
                 for (final ItemStack item : items) {
                     final int toDelete = item.getAmount();
 

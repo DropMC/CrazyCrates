@@ -14,6 +14,8 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import us.crazycrew.crazycrates.api.enums.types.KeyType;
+import com.badbones69.crazycrates.paper.utils.ItemUtil;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -48,8 +50,9 @@ public class PhysicalCrate extends CrateBuilder {
         // keys go only after the event passes, so a crate refused by permission or with no winnable prize costs nothing.
         if (isCrateEventValid(type, checkHand, isSilent, amount, eventType)) return;
 
-        // a mass open stops at the free slots: one prize each, and the crate refuses to open on a full inventory.
-        final int keys = massOpen ? Math.max(1, Math.min(Math.min(this.userManager.getPhysicalKeys(this.uuid, fileName), this.crate.getMaxMassOpen()), freeSlots())) : amount;
+        // a mass open stops at the free slots: one prize each, and the crate refuses to open on a full inventory. it
+        // spends only the keys in hand, since a migrated key never stacks with a new one and the rest sit elsewhere.
+        final int keys = massOpen ? Math.max(1, Math.min(Math.min(handKeys(), this.crate.getMaxMassOpen()), freeSlots())) : amount;
 
         if (!this.userManager.takeKeys(this.uuid, fileName, type, keys, checkHand || massOpen)) {
             this.crateManager.endCrate(this.crate, this.player);
@@ -76,6 +79,16 @@ public class PhysicalCrate extends CrateBuilder {
         this.cacheManager.addActiveCrate(this.uuid, new ActiveCrate(ActiveStatus.physical_location, this.location, 1, this.crate));
 
         new CrateOpening(this.player, this.crate, crateLocation.get(), this.crate.pickPrize(this.player)).start();
+    }
+
+    private int handKeys() {
+        int keys = 0;
+
+        for (final ItemStack item : List.of(this.player.getInventory().getItemInMainHand(), this.player.getInventory().getItemInOffHand())) {
+            if (!item.isEmpty() && ItemUtil.isSimilar(item, this.crate)) keys += item.getAmount();
+        }
+
+        return keys;
     }
 
     private int freeSlots() {
