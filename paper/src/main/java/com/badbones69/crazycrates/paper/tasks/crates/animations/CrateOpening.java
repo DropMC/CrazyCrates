@@ -12,9 +12,14 @@ import com.badbones69.crazycrates.paper.support.models.ModelManager;
 import com.badbones69.crazycrates.paper.tasks.crates.CrateManager;
 import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.CompactPhase;
 import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.CrackPhase;
+import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.FestiveDisplayPhase;
+import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.GiftBurstPhase;
+import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.JinglePhase;
 import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.KeyOpenerPhase;
 import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.PhysicalItemPhase;
 import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.RewardDisplayPhase;
+import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.RibbonPhase;
+import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.SnowBurstPhase;
 import com.badbones69.crazycrates.paper.tasks.crates.animations.phases.SwirlPhase;
 import com.ryderbelserion.fusion.paper.builders.folia.FoliaScheduler;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
@@ -150,18 +155,23 @@ public class CrateOpening {
         this.phases.add(switch (this.animation.getPreOpen()) {
             case KEY_OPENER -> new KeyOpenerPhase(this);
             case CRACK -> new CrackPhase(this);
+            case JINGLE -> new JinglePhase(this);
+            case RIBBON -> new RibbonPhase(this);
             case NONE -> new OpeningPhase.Instant(this);
         });
 
         this.phases.add(switch (this.animation.getOpen()) {
             case SWIRL -> new SwirlPhase(this);
             case COMPACT -> new CompactPhase(this);
+            case GIFT_BURST -> new GiftBurstPhase(this);
+            case SNOW_BURST -> new SnowBurstPhase(this);
             case NONE -> new OpeningPhase.Instant(this);
         });
 
         this.phases.add(switch (this.animation.getDisplay()) {
             case DEFAULT -> new RewardDisplayPhase(this);
             case PHYSICAL_ITEM -> new PhysicalItemPhase(this);
+            case FESTIVE -> new FestiveDisplayPhase(this);
         });
 
         startPhase(0);

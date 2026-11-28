@@ -19,9 +19,9 @@ import java.util.Map;
  *
  * <pre>
  * Animation:
- *   Pre-Open: {Type: KEY_OPENER}                  # NONE, KEY_OPENER, CRACK
- *   Open: {Type: SWIRL, Color: "#FF8A1F"}         # NONE, SWIRL, COMPACT
- *   Display: {Type: DEFAULT, Color: "#8B3DFF"}    # DEFAULT, PHYSICAL_ITEM
+ *   Pre-Open: {Type: KEY_OPENER}                  # NONE, KEY_OPENER, CRACK, JINGLE, RIBBON
+ *   Open: {Type: SWIRL, Color: "#FF8A1F"}         # NONE, SWIRL, COMPACT, GIFT_BURST, SNOW_BURST
+ *   Display: {Type: DEFAULT, Color: "#8B3DFF"}    # DEFAULT, PHYSICAL_ITEM, FESTIVE
  *   Display-Item-Position: {X: 0.0, Y: 2.0, Z: 0.0}
  * Idle-Effects:
  *   - {Particle: dust, Color: "#FF8A1F", Offset: {X: 0.0, Y: 0.0, Z: 0.0}, Velocity: 1.0, Spread: 0.1, Amount: 2}
@@ -29,11 +29,11 @@ import java.util.Map;
  */
 public class CrateAnimation {
 
-    public enum PreOpen { NONE, KEY_OPENER, CRACK }
+    public enum PreOpen { NONE, KEY_OPENER, CRACK, JINGLE, RIBBON }
 
-    public enum Open { NONE, SWIRL, COMPACT }
+    public enum Open { NONE, SWIRL, COMPACT, GIFT_BURST, SNOW_BURST }
 
-    public enum Display { DEFAULT, PHYSICAL_ITEM }
+    public enum Display { DEFAULT, PHYSICAL_ITEM, FESTIVE }
 
     private final PreOpen preOpen;
     private final Open open;
